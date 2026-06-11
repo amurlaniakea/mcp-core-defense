@@ -187,17 +187,31 @@ handler.verify_certificate(server_cert, expected_hostname="mcp-server.local")
 ## Test Results
 
 ```
-69 passed in 3.10s
+96 passed in 4.17s
 
 Phase 1 (Policy Engine):        11 tests
 Phase 2 (Schema Validator):     14 tests
-Phase 3 (DCI Checker):          10 tests
+Phase 3 (DCI Checker):          19 tests  (Python + JS/TS)
 Phase 4 (TDP Detector):         11 tests
 Phase 5 (Mutual TLS Auth):      12 tests
+Pipeline Orchestrator:           9 tests
 Integration (Full Pipeline):    11 tests
+Performance (Benchmarks):        8 tests
 ```
 
 All tests follow strict TDD — no production code without a failing test first.
+
+### Performance
+
+| Metric | Value |
+|--------|-------|
+| Policy Engine (per check) | < 1ms |
+| Schema Validator (per validation) | < 1ms |
+| DCI Checker (per analysis) | < 5ms |
+| TDP Detector (per scan) | < 5ms |
+| Full Pipeline (avg) | < 20ms |
+| Throughput | > 100 checks/sec |
+| Policy Engine (1000 tools) | < 2ms |
 
 ---
 
