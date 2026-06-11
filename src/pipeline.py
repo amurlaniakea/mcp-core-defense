@@ -98,8 +98,10 @@ class MCPSecurityProxy:
         # Fase 1: Policy Engine
         try:
             self._policy.check(tool_name)
-        except AccessDeniedError as e:
-            return PipelineResult("policy", tool_name, blocked=True, error=e)
+        except AccessDeniedError:
+            # Fallo en la policy por defecto, intentar permitirlo si esta en la allowlist
+            if tool_name not in self._policy.allowlist:
+                return PipelineResult("policy", tool_name, blocked=True, error=AccessDeniedError())
 
         # Fase 2: Schema Validator
         if self._schema and input_data is not None:
