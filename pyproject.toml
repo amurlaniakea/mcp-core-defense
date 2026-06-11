@@ -7,7 +7,7 @@ name = "mcp-core-defense"
 version = "0.1.0"
 description = "5-phase security proxy for Model Context Protocol agents"
 readme = "README.md"
-license = {text = "MIT"}
+license = {text = "AGPL-3.0-or-later"}
 requires-python = ">=3.10"
 authors = [
     {name = "Pedro Sordo"}

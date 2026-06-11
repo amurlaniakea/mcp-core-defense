@@ -229,4 +229,4 @@ All tests follow strict TDD — no production code without a failing test first.
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) for details.
+AGPL-3.0-or-later — see [LICENSE](LICENSE) for details.
