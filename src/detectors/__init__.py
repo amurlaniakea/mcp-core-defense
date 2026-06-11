@@ -1,6 +1,6 @@
-"""Phases 3+4: Detectors — DCI Checker and TDP Detector for MCP tool validation.
+"""Phases 3+4: Detectors — DCI Checker and TDP Detector for MCP tool validation."""
 
-Based on:
-  - Shi et al. (2026): Description-Code Inconsistency in MCP Servers
-  - Liu et al. (2026): Tool Description Poisoning Benchmark
-"""
+from .dci_checker import DCIChecker, DCIInconsistencyError
+from .tdp_detector import TDPDetector, TDPAttackDetected
+
+__all__ = ["DCIChecker", "DCIInconsistencyError", "TDPDetector", "TDPAttackDetected"]

@@ -1,0 +1,5 @@
+# Core dependencies
+cryptography>=41.0
+
+# Testing
+pytest>=7.0
