@@ -54,11 +54,12 @@ def _generate_self_signed_cert(cn="localhost", expired=False, alt_names=None):
     ])
 
     if expired:
-        not_before = datetime.datetime(2020, 1, 1)
-        not_after = datetime.datetime(2020, 12, 31)
+        not_before = datetime.datetime(2020, 1, 1, tzinfo=datetime.timezone.utc)
+        not_after = datetime.datetime(2020, 12, 31, tzinfo=datetime.timezone.utc)
     else:
-        not_before = datetime.datetime.utcnow() - datetime.timedelta(days=1)
-        not_after = datetime.datetime.utcnow() + datetime.timedelta(days=365)
+        now = datetime.datetime.now(datetime.timezone.utc)
+        not_before = now - datetime.timedelta(days=1)
+        not_after = now + datetime.timedelta(days=365)
 
     builder = (
         x509.CertificateBuilder()

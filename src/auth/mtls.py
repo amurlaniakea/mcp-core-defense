@@ -168,17 +168,17 @@ class MutualTLSHandler:
 
     def _check_expiration(self, cert):
         """Verifica que el certificado no este expirado."""
-        from datetime import datetime
-        now = datetime.utcnow()
-        if now < cert.not_valid_before:
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        if now < cert.not_valid_before_utc:
             raise CertificateVerificationError(
                 "Certificate is not yet valid (valid from "
-                + cert.not_valid_before.isoformat() + ")"
+                + cert.not_valid_before_utc.isoformat() + ")"
             )
-        if now > cert.not_valid_after:
+        if now > cert.not_valid_after_utc:
             raise CertificateVerificationError(
                 "Certificate has expired (expired on "
-                + cert.not_valid_after.isoformat() + ")"
+                + cert.not_valid_after_utc.isoformat() + ")"
             )
 
     def _check_pinning(self, cert_pem: str, cert):

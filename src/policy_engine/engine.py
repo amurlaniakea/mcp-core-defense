@@ -30,6 +30,11 @@ class MCPSecurityPolicyEngine:
         self._allowlist = allowlist or []
         self._context = context or {}
 
+    @property
+    def allowlist(self) -> list[str]:
+        """Lista de herramientas permitidas."""
+        return self._allowlist
+
     def check(self, tool_name: str) -> bool:
         """
         Verifica si una herramienta está permitida por la política.
