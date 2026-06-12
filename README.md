@@ -143,6 +143,39 @@ mcp-core-defense/
 
 ---
 
+## Security Audit Tool
+
+Incluimos `scripts/mcp_audit.py` — un auditor de seguridad para servidores MCP que puedes usar **antes** de añadir un servidor a tu agente:
+
+```bash
+# Auditar un servidor desde su definición JSON
+python3 scripts/mcp_audit.py server-definition.json
+
+# Ejemplo con servidor malicioso integrado
+python3 scripts/mcp_audit.py --example
+
+# Salida JSON (para integración con otros scripts)
+python3 scripts/mcp_audit.py server.json --output-json
+```
+
+El auditor evalúa cada herramienta contra 7 fases:
+- **TDP**: Tool Description Poisoning (exfiltración, ejecución, ofuscamiento)
+- **DCI**: Description-Code Inconsistency (parámetros ocultos)
+- **Policy**: Deny-by-default allowlist
+- **Auth**: Manejo de credenciales/secrets
+- **Sandbox**: Parámetros de tipo path/URL (traversal, SSRF)
+- **Heuristics**: Descripciones vacías, tipos faltantes, defaults sospechosos
+
+Return codes: `0` = limpio, `1` = low/medium, `2` = high/critical.
+
+**Integración con otros frameworks**: puede importarse como módulo Python:
+
+```python
+from mcp_audit import MCPAuditor
+auditor = MCPAuditor(server_allowlist=["my::trusted_tool"])
+report = auditor.audit_server(tools)
+```
+
 ## Quick Start
 
 ### Prerequisites
