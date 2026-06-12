@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Pedro Sordo Martínez <amurlaniakea@gmail.com>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """
 Fase 4: TDP Detector — Tool Description Poisoning
 

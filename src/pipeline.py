@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Pedro Sordo Martínez <amurlaniakea@gmail.com>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """
 MCP Security Proxy — Pipeline Orchestrator
 
@@ -75,11 +79,11 @@ class MCPSecurityProxy:
     def check(
         self,
         tool_name: str,
-        tool_description: dict = None,
-        code_params: list = None,
-        input_data: dict = None,
-        server_cert: str = None,
-        expected_hostname: str = None,
+        tool_description: dict | None = None,
+        code_params: list | None = None,
+        input_data: dict | None = None,
+        server_cert: str | None = None,
+        expected_hostname: str | None = None,
     ) -> PipelineResult:
         """
         Ejecuta el pipeline completo de 5 fases.
@@ -127,7 +131,8 @@ class MCPSecurityProxy:
         # Fase 5: Auth Mutual TLS
         if self._auth and server_cert:
             try:
-                self._auth.verify_certificate(server_cert, expected_hostname=expected_hostname)
+                kwargs = {"expected_hostname": expected_hostname} if expected_hostname else {}
+                self._auth.verify_certificate(server_cert, **kwargs)
             except (CertificateVerificationError, MITMDetectedError) as e:
                 return PipelineResult("auth", tool_name, blocked=True, error=e)
 

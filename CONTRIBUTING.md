@@ -1,52 +1,48 @@
 # Contributing to MCP Core Defense
 
-## Setup
+## Development Setup
 
 ```bash
+# Clone and setup
 git clone https://github.com/amurlaniakea/mcp-core-defense.git
 cd mcp-core-defense
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+make install
+
+# Run all checks
+make check
 ```
 
-## Running Tests
+## Make Targets
 
-```bash
-pytest tests/ -v
-```
+| Target | Description |
+|--------|-------------|
+| `make test` | Run all tests |
+| `make test-verbose` | Tests + coverage |
+| `make test-phase{N}` | Run Phase N tests only |
+| `make lint` | Run ruff linter |
+| `make format` | Format with black + ruff |
+| `make typecheck` | Run mypy |
+| `make check` | lint + typecheck + test |
+| `make clean` | Remove artifacts |
 
-All tests must pass before submitting a PR.
+## TDD Rules
 
-## Development Rules
+1. **No production code without a failing test first** (RED → GREEN → REFACTOR)
+2. Write the test, confirm it fails, then implement the minimum code to pass
+3. All tests must pass before committing
+4. Never commit failing tests
 
-1. **TDD only** — no production code without a failing test first
-2. **One behavior per test** — clear descriptive names
-3. **Real code, not mocks** — unless truly unavoidable
-4. **All 5 phases must pass** — policy → schema → DCI → TDP → auth
+## Code Standards
 
-## Project Structure
+- Python >= 3.10, type hints required on all functions
+- Google-style docstrings
+- Line length: 100 chars
+- Imports sorted with ruff (isort rules)
+- All source files must include the SPDX license header
 
-```
-src/
-├── policy_engine/      # Phase 1: Deny-by-default access control
-├── validators/         # Phase 2: Strict JSON schema validation
-├── detectors/          # Phase 3+4: DCI Checker + TDP Detector
-└── auth/               # Phase 5: Mutual TLS authentication
-tests/
-├── test_policy_engine.py
-├── test_schema_validator.py
-├── test_dci_checker.py
-├── test_tdp_detector.py
-├── test_mtls.py
-└── test_integration.py   # Full pipeline integration tests
-```
+## License
 
-## Adding a New Phase
-
-1. Write failing tests in `tests/test_<phase>.py`
-2. Run `pytest tests/test_<phase>.py -v` → confirm RED
-3. Implement in `src/<module>/<phase>.py`
-4. Run tests → confirm GREEN
-5. Add integration test in `test_integration.py`
-6. Update this file
+By contributing, you agree that your contributions will be licensed under
+AGPL-3.0-or-later.
