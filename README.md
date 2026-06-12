@@ -1,7 +1,7 @@
 # MCP Core Defense
 
-> **A 5-phase security proxy for Model Context Protocol agent systems.**
-> Defends against tool poisoning, description-code inconsistencies, privilege escalation, and authentication attacks.
+> **A 7-phase security proxy for Model Context Protocol agent systems.**
+> Defends against tool poisoning, description-code inconsistencies, privilege escalation, path traversal, and authentication attacks.
 
 ![Tests](https://github.com/amurlaniakea/mcp-core-defense/workflows/Tests/badge.svg)
 
@@ -11,7 +11,7 @@
 
 The Model Context Protocol (MCP) has emerged as a standardized interface for connecting large language models to external tools and data sources. As of mid-2026, the MCP ecosystem encompasses over 2,200 public MCP servers — but empirical studies reveal that **9.93% exhibit description-code inconsistencies** (Shi et al., 2026) and leading models suffer **~100% attack success rates under tool description poisoning** (Liu et al., 2026).
 
-This framework implements a **defense-in-depth security proxy** — the MCP Security Proxy (MCP-SP) — interposed between the agent and all MCP servers. The proxy implements five sequential verification phases. All 69 tests pass.
+This framework implements a **defense-in-depth security proxy** — the MCP Security Proxy (MCP-SP) — interposed between the agent and all MCP servers. The proxy implements seven sequential verification phases. All 112 tests pass on Python 3.10, 3.11, and 3.12.
 
 ---
 
@@ -44,6 +44,7 @@ This framework implements a **defense-in-depth security proxy** — the MCP Secu
 │  ┌────────────────────▼───────────────────────────────────────┐  │
 │  │ Phase 3: DCI CHECKER (Shi et al. 2026)                      │  │
 │  │ Description-Code Consistency · AST static analysis          │  │
+│  │ Python + JavaScript/TypeScript multi-language support        │  │
 │  └────────────────────┬───────────────────────────────────────┘  │
 │                       │ PASS                                      │
 │  ┌────────────────────▼───────────────────────────────────────┐  │
@@ -54,6 +55,16 @@ This framework implements a **defense-in-depth security proxy** — the MCP Secu
 │  ┌────────────────────▼───────────────────────────────────────┐  │
 │  │ Phase 5: MUTUAL TLS AUTH (Zhou et al. 2026)                 │  │
 │  │ Certificate verification · Pinning · MITM detection         │  │
+│  └────────────────────┬───────────────────────────────────────┘  │
+│                       │ PASS                                      │
+│  ┌────────────────────▼───────────────────────────────────────┐  │
+│  │ Phase 6: SANDBOX                                            │  │
+│  │ Filesystem jail · Path traversal prevention · Ext. filter   │  │
+│  └────────────────────┬───────────────────────────────────────┘  │
+│                       │ PASS                                      │
+│  ┌────────────────────▼───────────────────────────────────────┐  │
+│  │ Phase 7: SDK ADAPTER                                        │  │
+│  │ Async MCP client integration · Interceptor · Dry-run mode   │  │
 │  └────────────────────┬───────────────────────────────────────┘  │
 │                       │                                           │
 └───────────────────────┼───────────────────────────────────────────┘
@@ -72,12 +83,14 @@ This framework implements a **defense-in-depth security proxy** — the MCP Secu
 | Threat | Attack Vector | Phase | Mitigation | Reference |
 |--------|--------------|-------|------------|-----------|
 | Tool Description Poisoning | Malicious instructions in tool metadata | 4 | Regex pattern scan (exfil/execution/obfuscation) | Liu et al. (2026) |
-| Description-Code Inconsistency | Tool behavior diverges from description | 3 | AST static analysis + param comparison | Shi et al. (2026) |
+| Description-Code Inconsistency | Tool behavior diverges from description | 3 | AST static analysis + param comparison (Python/JS/TS) | Shi et al. (2026) |
 | Authentication Bypass | Weak auth on remote MCP servers | 5 | Mutual TLS + certificate pinning | Zhou et al. (2026) |
 | Privilege Escalation | Server exceeds declared permissions | 1 | Deny-by-default allowlist + per-tool scope | Metere (2026) |
 | Indirect Prompt Injection | Malicious content in tool results | 2 | Strict schema validation + output sanitization | Greshake et al. (2023) |
 | Tool Shadowing | Malicious server impersonates legitimate tool | 5 | Certificate-based server identity | Zhou et al. (2026) |
 | Data Exfiltration | Parameters leaked to external endpoints | 1+4 | Policy engine + TDP pattern detection | — |
+| Path Traversal | Filesystem escape via `../` in tool args | 6 | Sandbox jail with resolved path validation | — |
+| Unauthorized Tool Execution | LLM tricked into calling dangerous tools | 7 | SDK adapter intercepts all tool calls pre-execution | — |
 
 ---
 
@@ -95,23 +108,36 @@ mcp-core-defense/
 │   │   └── schema_validator.py # Strict I/O validation, nested objects, arrays
 │   ├── detectors/              # Phases 3+4: DCI + TDP detection
 │   │   ├── __init__.py         # Exports: DCIChecker, TDPDetector, ...
-│   │   ├── dci_checker.py      # Description-Code Consistency (AST-based)
+│   │   ├── dci_checker.py      # Description-Code Consistency (Python/JS/TS)
 │   │   └── tdp_detector.py     # Tool Description Poisoning (regex patterns)
-│   └── auth/                   # Phase 5: Mutual TLS authentication
-│       ├── __init__.py         # Exports: MutualTLSHandler, ...
-│       └── mtls.py             # Certificate verification + pinning
+│   ├── auth/                   # Phase 5: Mutual TLS authentication
+│   │   ├── __init__.py         # Exports: MutualTLSHandler, ...
+│   │   └── mtls.py             # Certificate verification + pinning
+│   ├── sandbox/                # Phase 6: Filesystem sandbox
+│   │   ├── __init__.py
+│   │   └── sandbox.py          # Path traversal prevention + extension filter
+│   ├── pipeline.py             # Orchestrator: 5-phase sequential pipeline
+│   └── sdk_integration.py      # Phase 7: Async SDK adapter for MCP clients
 ├── tests/
-│   ├── test_policy_engine.py   # 11 tests
+│   ├── test_policy_engine.py    # 11 tests
 │   ├── test_schema_validator.py # 14 tests
-│   ├── test_dci_checker.py     # 10 tests
-│   ├── test_tdp_detector.py    # 11 tests
-│   ├── test_mtls.py            # 12 tests
-│   └── test_integration.py     # 11 tests (full pipeline + exports)
+│   ├── test_dci_checker.py      # 19 tests (Python + JS/TS)
+│   ├── test_tdp_detector.py     # 11 tests
+│   ├── test_mtls.py             # 12 tests
+│   ├── test_pipeline.py         # 9 tests
+│   ├── test_integration.py      # 11 tests (full pipeline + exports)
+│   ├── test_performance.py      # 8 benchmarks (latency, throughput, scalability)
+│   ├── test_sandbox.py          # 16 tests
+│   ├── test_sdk_integration.py  # 1 test (async SDK adapter)
+│   └── __init__.py
 ├── .github/workflows/
 │   └── tests.yml               # CI/CD: tests on Python 3.10/3.11/3.12
-├── requirements.txt            # pytest, cryptography
-├── CONTRIBUTING.md             # Dev setup + TDD rules
-├── LICENSE                     # MIT
+├── Makefile                    # Dev workflow: install, test, lint, format, typecheck
+├── pyproject.toml              # Packaging: pip install -e ".[dev]"
+├── requirements.txt            # Runtime + test dependencies
+├── CONTRIBUTING.md             # Dev setup + TDD rules + code standards
+├── LICENSE                     # AGPL-3.0-or-later
+├── LICENSE.AGPL                # Full AGPLv3 text
 └── README.md                   # This file
 ```
 
@@ -131,21 +157,29 @@ git clone https://github.com/amurlaniakea/mcp-core-defense.git
 cd mcp-core-defense
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+make install
 ```
 
 ### Running Tests
 
 ```bash
-# Full suite (69 tests)
-python -m pytest tests/ -v
+# Full suite (112 tests)
+make test
 
 # Specific phase
-python -m pytest tests/test_policy_engine.py -v
+make test-phase1    # Policy Engine
+make test-phase2    # Schema Validator
+make test-phase3    # DCI Checker
+make test-phase4    # TDP Detector
+make test-phase5    # Mutual TLS
+make test-pipeline  # Pipeline + Integration
+make test-perf      # Performance benchmarks
 
 # With coverage
-pip install pytest-cov
-python -m pytest tests/ --cov=src --cov-report=term-missing
+make test-verbose
+
+# All checks (lint + typecheck + test)
+make check
 ```
 
 ### Usage
@@ -155,6 +189,8 @@ from policy_engine import MCPSecurityPolicyEngine
 from validators import MCPSchemaValidator
 from detectors import DCIChecker, TDPDetector
 from auth import MutualTLSHandler
+from pipeline import MCPSecurityProxy
+from sandbox import Sandbox
 
 # Phase 1: Policy Engine
 engine = MCPSecurityPolicyEngine(allowlist=["filesystem::read_file", "git::*"])
@@ -169,9 +205,10 @@ validator = MCPSchemaValidator(schema={
 })
 validator.validate_input({"path": "/file.txt"})  # True
 
-# Phase 3: DCI Checker
+# Phase 3: DCI Checker (Python + JS/TS)
 checker = DCIChecker()
 checker.check(tool_description, code_params=["path"])  # True
+checker.analyze_static(tool_description, js_code, language="typescript")  # True
 
 # Phase 4: TDP Detector
 detector = TDPDetector()
@@ -180,6 +217,34 @@ detector.check(tool_description)  # True or raises TDPAttackDetected
 # Phase 5: Mutual TLS
 handler = MutualTLSHandler(trusted_certs=[ca_cert_pem])
 handler.verify_certificate(server_cert, expected_hostname="mcp-server.local")
+
+# Full Pipeline (Phases 1-5)
+proxy = MCPSecurityProxy(
+    allowlist=["filesystem::read_file"],
+    schema={"type": "object", "properties": {"path": {"type": "string"}},  # Phase 2
+)
+result = proxy.check(
+    tool_name="filesystem::read_file",
+    tool_description=tool_desc,     # Phases 3-4
+    code_params=["path"],           # Phase 3
+    input_data={"path": "/test.txt"},  # Phase 2
+)
+print(result.passed)  # True
+
+# Phase 6: Sandbox
+with Sandbox(allowed_extensions=[".txt", ".csv"]) as s:
+    safe_path = s.resolve("data/file.txt")
+    s.write_file("data/file.txt", "hello")
+    content = s.read_file("data/file.txt")
+
+# Phase 7: SDK Adapter (async)
+from sdk_integration import MCPSecuritySDKAdapter
+adapter = MCPSecuritySDKAdapter(proxy)
+result = await adapter.secure_tool_execution(
+    tool_name="filesystem::read_file",
+    arguments={"path": "/test.txt"},
+    original_execute_func=mcp_client.execute,
+)
 ```
 
 ---
@@ -187,7 +252,7 @@ handler.verify_certificate(server_cert, expected_hostname="mcp-server.local")
 ## Test Results
 
 ```
-96 passed in 4.17s
+112 passed in 2.05s
 
 Phase 1 (Policy Engine):        11 tests
 Phase 2 (Schema Validator):     14 tests
@@ -197,6 +262,8 @@ Phase 5 (Mutual TLS Auth):      12 tests
 Pipeline Orchestrator:           9 tests
 Integration (Full Pipeline):    11 tests
 Performance (Benchmarks):        8 tests
+Sandbox (Fase 6):               16 tests
+SDK Adapter (Fase 7):            1 test
 ```
 
 All tests follow strict TDD — no production code without a failing test first.
@@ -210,8 +277,10 @@ All tests follow strict TDD — no production code without a failing test first.
 | DCI Checker (per analysis) | < 5ms |
 | TDP Detector (per scan) | < 5ms |
 | Full Pipeline (avg) | < 20ms |
+| Full Pipeline (p95) | < 50ms |
 | Throughput | > 100 checks/sec |
 | Policy Engine (1000 tools) | < 2ms |
+| TDP Detector (10KB description) | < 10ms |
 
 ---
 

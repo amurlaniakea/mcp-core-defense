@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-"""MCP Core Defense — 5-phase security proxy for MCP agents."""
+"""MCP Core Defense — 7-phase security proxy for MCP agents."""
 
 from .engine import MCPSecurityPolicyEngine, AccessDeniedError
 

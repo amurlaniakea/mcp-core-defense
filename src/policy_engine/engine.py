@@ -30,12 +30,12 @@ class MCPSecurityPolicyEngine:
     # Sufijos que se consideran operaciones de escritura
     WRITE_ACTIONS = {"write", "delete", "create", "update", "remove", "push", "commit", "drop", "truncate"}
 
-    def __init__(self, allowlist: list[str], context: dict | None = None):
+    def __init__(self, allowlist: list, context: dict | None = None):
         self._allowlist = allowlist or []
         self._context = context or {}
 
     @property
-    def allowlist(self) -> list[str]:
+    def allowlist(self) -> list:
         """Lista de herramientas permitidas."""
         return self._allowlist
 

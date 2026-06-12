@@ -23,7 +23,7 @@ class PipelineResult:
     """Resultado de la ejecucion del pipeline de seguridad."""
 
     def __init__(self, phase_passed: str, tool_name: str, blocked: bool = False,
-                 error: Exception = None):
+                 error: Exception | None = None):
         self.phase_passed = phase_passed
         self.tool_name = tool_name
         self.blocked = blocked
@@ -39,7 +39,7 @@ class PipelineResult:
         return "PipelineResult(tool=" + self.tool_name + ", ALL_PASSED)"
 
     @property
-    def passed(self):
+    def passed(self) -> bool:
         return not self.blocked
 
 
@@ -61,10 +61,10 @@ class MCPSecurityProxy:
 
     def __init__(
         self,
-        allowlist: list = None,
-        schema: dict = None,
-        context: dict = None,
-        trusted_certs: list = None,
+        allowlist: list | None = None,
+        schema: dict | None = None,
+        context: dict | None = None,
+        trusted_certs: list | None = None,
         strict_schema: bool = False,
     ):
         self._policy = MCPSecurityPolicyEngine(
@@ -102,10 +102,8 @@ class MCPSecurityProxy:
         # Fase 1: Policy Engine
         try:
             self._policy.check(tool_name)
-        except AccessDeniedError:
-            # Fallo en la policy por defecto, intentar permitirlo si esta en la allowlist
-            if tool_name not in self._policy.allowlist:
-                return PipelineResult("policy", tool_name, blocked=True, error=AccessDeniedError())
+        except AccessDeniedError as e:
+            return PipelineResult("policy", tool_name, blocked=True, error=e)
 
         # Fase 2: Schema Validator
         if self._schema and input_data is not None:
