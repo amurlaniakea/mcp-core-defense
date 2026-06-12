@@ -1,0 +1,8 @@
+mcp-core-defense - A 7-phase security proxy for Model Context Protocol agents.
+
+Copyright (C) 2026 Pedro Sordo Martínez <amurlaniakea@gmail.com>
+
+This program is licensed under the GNU Affero General Public License v3.0 or later.
+See LICENSE file for the full license text, or <https://www.gnu.org/licenses/>.
+
+SPDX-License-Identifier: AGPL-3.0-or-later
