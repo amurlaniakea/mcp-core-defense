@@ -5,18 +5,30 @@
 """
 MCP Security Proxy — Pipeline Orchestrator
 
-Orquesta las 5 fases del MCP Security Proxy en un unico punto de entrada:
-1. Policy Engine → 2. Schema Validator → 3. DCI Checker → 4. TDP Detector → 5. Auth
+Orquesta las 7 fases del MCP Security Proxy en un único punto de entrada:
+1. Policy Engine → 2. Schema Validator → 3. DCI Checker → 4. TDP Detector → 5. Auth → 6. Sandbox → 7. SDK Adapter
 
-Uso:
+Fases 1-5: Se ejecutan siempre en secuencia (cortocircuitables).
+Fase 6 (Sandbox): Se activa opcionalmente con sandbox=True.
+Fase 7 (SDK Adapter): Se usa externamente para interceptar tool calls del SDK de MCP.
+
+Uso básico (fases 1-5):
     proxy = MCPSecurityProxy(allowlist=["filesystem::read_file"])
-    result = proxy.check_and_execute(tool_description, code_params, input_data)
+    result = proxy.check(tool_description, code_params, input_data)
+
+Uso con Sandbox (fases 1-7):
+    proxy = MCPSecurityProxy(allowlist=["filesystem::read_file"], sandbox=True)
+    with proxy.sandbox_session() as sandbox:
+        result = proxy.check(input_data={"path": "safe/path.txt"})
+        # Sandbox valida que los paths no escapen del directorio jaula
 """
 
 from policy_engine import MCPSecurityPolicyEngine, AccessDeniedError
 from validators import MCPSchemaValidator, SchemaValidationError
 from detectors import DCIChecker, DCIInconsistencyError, TDPDetector, TDPAttackDetected
 from auth import MutualTLSHandler, CertificateVerificationError, MITMDetectedError
+from sandbox import Sandbox, SandboxError, PathTraversalError
+# SDK adapter se importa lazy para evitar circular import
 
 
 class PipelineResult:
@@ -66,6 +78,8 @@ class MCPSecurityProxy:
         context: dict | None = None,
         trusted_certs: list | None = None,
         strict_schema: bool = False,
+        sandbox: bool = False,
+        sandbox_allowed_extensions: list | None = None,
     ):
         self._policy = MCPSecurityPolicyEngine(
             allowlist=allowlist or [],
@@ -75,6 +89,22 @@ class MCPSecurityProxy:
         self._dci = DCIChecker()
         self._tdp = TDPDetector()
         self._auth = MutualTLSHandler(trusted_certs=trusted_certs) if trusted_certs else None
+        self._sandbox_enabled = sandbox
+        self._sandbox_allowed_extensions = sandbox_allowed_extensions
+        self._sandbox = None
+
+    def sandbox_session(self):
+        """Context manager para usar la Sandbox (Fase 6)."""
+        if not self._sandbox_enabled:
+            raise SandboxError("Sandbox no está habilitada. Usar sandbox=True en el constructor.")
+        self._sandbox = Sandbox(allowed_extensions=self._sandbox_allowed_extensions)
+        return self._sandbox
+
+    @property
+    def sdk_adapter(self):
+        """Adapter para integrar con SDK de MCP (Fase 7)."""
+        from sdk_integration import MCPSecuritySDKAdapter
+        return MCPSecuritySDKAdapter(self)
 
     def check(
         self,
@@ -146,4 +176,7 @@ class MCPSecurityProxy:
         phases.append("tdp")
         if self._auth:
             phases.append("auth")
+        if self._sandbox_enabled:
+            phases.append("sandbox")
+        phases.append("sdk_adapter")
         return phases

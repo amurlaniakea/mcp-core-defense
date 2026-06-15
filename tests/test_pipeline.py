@@ -58,7 +58,7 @@ class TestPipelineAllPass:
     def test_pipeline_phases_property(self):
         """Verifica que phases lista las fases activas."""
         proxy = MCPSecurityProxy(allowlist=["x"])
-        assert proxy.phases == ["policy", "dci", "tdp"]
+        assert proxy.phases == ["policy", "dci", "tdp", "sdk_adapter"]
 
         proxy_full = MCPSecurityProxy(
             allowlist=["x"],
