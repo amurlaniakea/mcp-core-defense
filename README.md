@@ -423,3 +423,11 @@ All tests follow strict TDD — no production code without a failing test first.
 ## License
 
 AGPL-3.0-or-later — see [LICENSE](LICENSE) for details.
+
+---
+
+## Commercial Licensing
+
+Need to use MCP Core Defense in a closed-source commercial product or internal enterprise environment? Commercial licenses and support contracts are available.
+
+**Contact:** [amurlaniakea@gmail.com](mailto:amurlaniakea@gmail.com)
