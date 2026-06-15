@@ -218,6 +218,57 @@ report = auditor.audit_server(tools)
 
 ## Quick Start
 
+## Quick Start
+
+### Instalación rápida (30 segundos)
+
+```bash
+# Clonar e instalar
+git clone https://github.com/amurlaniakea/mcp-core-defense.git
+cd mcp-core-defense
+pip install -e .
+
+# Verificar instalación
+python3 -c "from src.pipeline import MCPSecurityProxy; print('OK:', MCPSecurityProxy(allowlist=['test']).phases)"
+```
+
+### Ejemplo rápido
+
+```python
+from src.pipeline import MCPSecurityProxy
+
+# Crear proxy con allowlist
+proxy = MCPSecurityProxy(allowlist=["filesystem::read_file", "git::status"])
+
+# Auditar una herramienta
+tool = {
+    "name": "filesystem::read_file",
+    "description": "Read a file from the filesystem",
+    "parameters": {
+        "type": "object",
+        "properties": {"path": {"type": "string"}},
+        "required": ["path"]
+    }
+}
+
+# Verificar contra las 7 fases
+result = proxy.check(tool_name=tool["name"])
+print(f"Passed: {result.passed}")  # True
+print(f"Phases: {proxy.phases}")   # ['policy', 'dci', 'tdp', 'sandbox', 'sdk_adapter']
+```
+
+### Ejecutar tests
+
+```bash
+# Todos los tests (127)
+python3 -m pytest tests/ -v
+
+# Test específico
+python3 -m pytest tests/test_pipeline.py -v
+```
+
+---
+
 ### Prerequisites
 
 - Python >= 3.10
@@ -236,7 +287,7 @@ make install
 ### Running Tests
 
 ```bash
-# Full suite (112 tests)
+# Full suite (127 tests)
 make test
 
 # Specific phase
