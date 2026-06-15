@@ -4,14 +4,54 @@
 > Defends against tool poisoning, description-code inconsistencies, privilege escalation, path traversal, and authentication attacks.
 
 ![Tests](https://github.com/amurlaniakea/mcp-core-defense/workflows/Tests/badge.svg)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![License](https://img.shields.io/badge/license-AGPL--3.0-green)
+![Status](https://img.shields.io/badge/status-production--ready-brightgreen)
 
 ---
+
+## Architecture
+
+```mermaid
+graph TB
+    subgraph Agent["MCP Agent (LLM Core)"]
+        LLM[LLM Reasoning]
+        Client[MCP Client]
+        Memory[Memory Context]
+    end
+    
+    subgraph Proxy["MCP Security Proxy (7 Phases)"]
+        P1[Phase 1: Policy Engine]
+        P2[Phase 2: Schema Validator]
+        P3[Phase 3: DCI Checker]
+        P4[Phase 4: TDP Detector]
+        P5[Phase 5: Mutual TLS]
+        P6[Phase 6: Sandbox]
+        P7[Phase 7: SDK Adapter]
+    end
+    
+    subgraph Servers["MCP Servers"]
+        S1[Server A]
+        S2[Server B]
+        S3[Server C]
+    end
+    
+    LLM <--> Client
+    Client --> P1
+    P1 --> P2 --> P3 --> P4 --> P5 --> P6 --> P7
+    P7 --> S1 & S2 & S3
+    S7 --> Client
+    
+    style Agent fill:#e1f5fe,stroke:#01579b
+    style Proxy fill:#fff3e0,stroke:#e65100
+    style Servers fill:#e8f5e9,stroke:#2e7d32
+```
 
 ## Overview
 
 The Model Context Protocol (MCP) has emerged as a standardized interface for connecting large language models to external tools and data sources. As of mid-2026, the MCP ecosystem encompasses over 2,200 public MCP servers — but empirical studies reveal that **9.93% exhibit description-code inconsistencies** (Shi et al., 2026) and leading models suffer **~100% attack success rates under tool description poisoning** (Liu et al., 2026).
 
-This framework implements a **defense-in-depth security proxy** — the MCP Security Proxy (MCP-SP) — interposed between the agent and all MCP servers. The proxy implements seven sequential verification phases. All 112 tests pass on Python 3.10, 3.11, and 3.12.
+This framework implements a **defense-in-depth security proxy** — the MCP Security Proxy (MCP-SP) — interposed between the agent and all MCP servers. The proxy implements seven sequential verification phases. All 127 tests pass on Python 3.10, 3.11, and 3.12.
 
 ---
 
