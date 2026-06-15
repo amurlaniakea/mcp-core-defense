@@ -208,27 +208,60 @@ class MutualTLSHandler:
                 )
 
     def _check_trusted(self, cert_pem: str, cert):
-        """Verifica que el certificado este en la lista de trusted."""
+        """Verifica que el certificado esté en la lista de trusted.
+        
+        Usa serial + issuer como identificador único para evitar falsos
+        positivos cuando dos CAs tienen el mismo CN.
+        """
         if not self._trusted_parsed:
             raise CertificateVerificationError(
                 "No trusted certificates configured"
             )
 
-        # Comparar por subject CN
-        cn = cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)
-        cert_cn = cn[0].value if cn else ""
+        # Identificador único: serial + issuer CN
+        cert_serial = cert.serial_number
+        cert_issuer = cert.issuer.get_attributes_for_oid(NameOID.COMMON_NAME)
+        cert_issuer_cn = cert_issuer[0].value if cert_issuer else ""
+        cert_key_hash = hashlib.sha256(
+            cert.public_key().public_bytes(
+                serialization.Encoding.DER,
+                serialization.PublicFormat.SubjectPublicKeyInfo
+            )
+            if hasattr(cert.public_key(), 'public_bytes')
+            else str(cert.public_key().public_numbers()).encode()
+        ).hexdigest()[:16]
 
         for trusted in self._trusted_parsed:
+            trusted_serial = trusted.serial_number
+            trusted_issuer = trusted.issuer.get_attributes_for_oid(NameOID.COMMON_NAME)
+            trusted_issuer_cn = trusted_issuer[0].value if trusted_issuer else ""
+            trusted_key_hash = hashlib.sha256(
+                trusted.public_key().public_bytes(
+                    serialization.Encoding.DER,
+                    serialization.PublicFormat.SubjectPublicKeyInfo
+                )
+                if hasattr(trusted.public_key(), 'public_bytes')
+                else str(trusted.public_key().public_numbers()).encode()
+            ).hexdigest()[:16]
+
+            # Comparación por serial + issuer (identificador único)
+            # Fallback a CN + key para compatibilidad hacia atrás
+            if (cert_serial == trusted_serial and 
+                cert_issuer_cn == trusted_issuer_cn and
+                cert_key_hash == trusted_key_hash):
+                return
+            # Fallback: mismo CN + misma clave pública
+            cn = cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)
+            cert_cn = cn[0].value if cn else ""
             trusted_cn = trusted.subject.get_attributes_for_oid(NameOID.COMMON_NAME)
             trusted_cn = trusted_cn[0].value if trusted_cn else ""
-
-            # Mismo CN y misma clave publica = confiable
-            if cert_cn == trusted_cn:
-                if cert.public_key().public_numbers() == trusted.public_key().public_numbers():
-                    return
+            if (cert_cn == trusted_cn and 
+                cert.public_key().public_numbers() == trusted.public_key().public_numbers()):
+                return
 
         raise CertificateVerificationError(
-            "Certificate for '" + cert_cn + "' is not in the trusted list"
+            "Certificate for '" + (cert_cn if 'cert_cn' in dir() else "unknown") + 
+            "' is not in the trusted list"
         )
 
     def _check_hostname(self, cert, expected_hostname: str):
