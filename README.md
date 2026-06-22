@@ -218,8 +218,6 @@ report = auditor.audit_server(tools)
 
 ## Quick Start
 
-## Quick Start
-
 ### Instalación rápida (30 segundos)
 
 ```bash
@@ -309,12 +307,13 @@ make check
 ### Usage
 
 ```python
-from policy_engine import MCPSecurityPolicyEngine
-from validators import MCPSchemaValidator
-from detectors import DCIChecker, TDPDetector
-from auth import MutualTLSHandler
-from pipeline import MCPSecurityProxy
-from sandbox import Sandbox
+from src.policy_engine import MCPSecurityPolicyEngine
+from src.validators import MCPSchemaValidator
+from src.detectors import DCIChecker, TDPDetector
+from src.auth import MutualTLSHandler
+from src.pipeline import MCPSecurityProxy
+from src.sandbox import Sandbox
+from src.sdk_integration import MCPSecuritySDKAdapter
 
 # Phase 1: Policy Engine
 engine = MCPSecurityPolicyEngine(allowlist=["filesystem::read_file", "git::*"])
@@ -362,7 +361,6 @@ with Sandbox(allowed_extensions=[".txt", ".csv"]) as s:
     content = s.read_file("data/file.txt")
 
 # Phase 7: SDK Adapter (async)
-from sdk_integration import MCPSecuritySDKAdapter
 adapter = MCPSecuritySDKAdapter(proxy)
 result = await adapter.secure_tool_execution(
     tool_name="filesystem::read_file",
