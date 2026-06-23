@@ -81,7 +81,7 @@ class Sandbox:
         jail_resolved = self.jail_dir.resolve()
 
         # Validar que está dentro de la jaula
-        if not str(target).startswith(str(jail_resolved)):
+        if not target.is_relative_to(jail_resolved):
             raise PathTraversalError(
                 f"Path traversal detectado: '{path}' resuelve a '{target}' "
                 f"fuera de la sandbox '{jail_resolved}'"

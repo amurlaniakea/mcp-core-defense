@@ -52,10 +52,26 @@ class TestPathResolution:
             assert str(p).startswith(str(s.jail_dir))
 
     def test_path_traversal_blocked(self):
-        """Path traversal con .. es bloqueado."""
+        """Path traversal con ../ es bloqueado."""
         with Sandbox() as s:
             with pytest.raises(PathTraversalError):
                 s.resolve("../../etc/passwd")
+
+    def test_path_traversal_prefix_bypass_blocked(self):
+        """Bypass de prefijo sin separador (jail_evil/) es bloqueado."""
+        with Sandbox() as s:
+            jail = s.jail_dir
+            # Crear directorio hermano con nombre que extiende el prefijo del jail
+            evil_dir = jail.parent / (jail.name + "_evil")
+            evil_dir.mkdir(exist_ok=True)
+            evil_file = evil_dir / "secret.txt"
+            evil_file.write_text("stolen")
+            try:
+                with pytest.raises(PathTraversalError):
+                    s.resolve("../" + jail.name + "_evil/secret.txt")
+            finally:
+                evil_file.unlink()
+                evil_dir.rmdir()
 
     def test_path_traversal_with_valid_prefix(self):
         """Path traversal disfrazado con prefijo válido es bloqueado."""

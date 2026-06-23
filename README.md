@@ -53,10 +53,6 @@ The Model Context Protocol (MCP) has emerged as a standardized interface for con
 
 This framework implements a **defense-in-depth security proxy** — the MCP Security Proxy (MCP-SP) — interposed between the agent and all MCP servers. The proxy implements seven sequential verification phases. All 127 tests pass on Python 3.10, 3.11, and 3.12.
 
----
-
-## Security Architecture
-
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                      MCP AGENT (LLM Core)                       │
@@ -93,7 +89,7 @@ This framework implements a **defense-in-depth security proxy** — the MCP Secu
 │  └────────────────────┬───────────────────────────────────────┘  │
 │                       │ PASS                                      │
 │  ┌────────────────────▼───────────────────────────────────────┐  │
-│  │ Phase 5: MUTUAL TLS AUTH (Zhou et al. 2026)                 │  │
+│  │ Phase 5: CERTIFICATE PINNING (Zhou et al. 2026)                │  │
 │  │ Certificate verification · Pinning · MITM detection         │  │
 │  └────────────────────┬───────────────────────────────────────┘  │
 │                       │ PASS                                      │
@@ -124,7 +120,7 @@ This framework implements a **defense-in-depth security proxy** — the MCP Secu
 |--------|--------------|-------|------------|-----------|
 | Tool Description Poisoning | Malicious instructions in tool metadata | 4 | Regex pattern scan (exfil/execution/obfuscation) | Liu et al. (2026) |
 | Description-Code Inconsistency | Tool behavior diverges from description | 3 | AST static analysis + param comparison (Python/JS/TS) | Shi et al. (2026) |
-| Authentication Bypass | Weak auth on remote MCP servers | 5 | Mutual TLS + certificate pinning | Zhou et al. (2026) |
+| Authentication Bypass | Weak auth on remote MCP servers | 5 | Certificate pinning + hostname verification | Zhou et al. (2026) |
 | Privilege Escalation | Server exceeds declared permissions | 1 | Deny-by-default allowlist + per-tool scope | Metere (2026) |
 | Indirect Prompt Injection | Malicious content in tool results | 2 | Strict schema validation + output sanitization | Greshake et al. (2023) |
 | Tool Shadowing | Malicious server impersonates legitimate tool | 5 | Certificate-based server identity | Zhou et al. (2026) |
@@ -252,7 +248,7 @@ tool = {
 # Verificar contra las 7 fases
 result = proxy.check(tool_name=tool["name"])
 print(f"Passed: {result.passed}")  # True
-print(f"Phases: {proxy.phases}")   # ['policy', 'dci', 'tdp', 'sandbox', 'sdk_adapter']
+print(f"Phases: {proxy.phases}")   # ['policy', 'dci', 'tdp', 'sdk_adapter']
 ```
 
 ### Ejecutar tests
@@ -344,11 +340,11 @@ handler.verify_certificate(server_cert, expected_hostname="mcp-server.local")
 # Full Pipeline (Phases 1-5)
 proxy = MCPSecurityProxy(
     allowlist=["filesystem::read_file"],
-    schema={"type": "object", "properties": {"path": {"type": "string"}},  # Phase 2
+    schema={"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]},  # Phase 2
 )
 result = proxy.check(
     tool_name="filesystem::read_file",
-    tool_description=tool_desc,     # Phases 3-4
+    tool_description={"description": "Read a file", "parameters": {"properties": {"path": {"type": "string"}}, "required": ["path"]}},  # Phases 3-4
     code_params=["path"],           # Phase 3
     input_data={"path": "/test.txt"},  # Phase 2
 )
@@ -374,18 +370,19 @@ result = await adapter.secure_tool_execution(
 ## Test Results
 
 ```
-112 passed in 2.05s
+127 passed in 2.05s
 
 Phase 1 (Policy Engine):        11 tests
 Phase 2 (Schema Validator):     14 tests
-Phase 3 (DCI Checker):          19 tests  (Python + JS/TS)
+Phase 3 (DCI Checker):          20 tests  (Python + JS/TS)
 Phase 4 (TDP Detector):         11 tests
 Phase 5 (Mutual TLS Auth):      12 tests
 Pipeline Orchestrator:           9 tests
 Integration (Full Pipeline):    11 tests
 Performance (Benchmarks):        8 tests
 Sandbox (Fase 6):               16 tests
-SDK Adapter (Fase 7):            1 test
+SDK Adapter (Fase 7):            4 tests
+MCP Audit Tool:                 12 tests
 ```
 
 All tests follow strict TDD — no production code without a failing test first.
