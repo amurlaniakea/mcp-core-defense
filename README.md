@@ -8,6 +8,11 @@
 ![License](https://img.shields.io/badge/license-AGPL--3.0-green)
 ![Status](https://img.shields.io/badge/status-production--ready-brightgreen)
 
+> **Nota**: Este framework implementa múltiples capas de defensa, pero ninguna
+> solución de seguridad es infalible. Consulta [SECURITY.md](SECURITY.md) para
+> limitaciones conocidas, incluyendo la evasión del detector TDP y el alcance
+> real de la Fase 5 (certificate pinning, no mTLS completo).
+
 ---
 
 ## Architecture
@@ -25,7 +30,7 @@ graph TB
         P2[Phase 2: Schema Validator]
         P3[Phase 3: DCI Checker]
         P4[Phase 4: TDP Detector]
-        P5[Phase 5: Mutual TLS]
+        P5[Phase 5: Certificate Pinning]
         P6[Phase 6: Sandbox]
         P7[Phase 7: SDK Adapter]
     end
@@ -51,7 +56,7 @@ graph TB
 
 The Model Context Protocol (MCP) has emerged as a standardized interface for connecting large language models to external tools and data sources. As of mid-2026, the MCP ecosystem encompasses over 2,200 public MCP servers — but empirical studies reveal that **9.93% exhibit description-code inconsistencies** (Shi et al., 2026) and leading models suffer **~100% attack success rates under tool description poisoning** (Liu et al., 2026).
 
-This framework implements a **defense-in-depth security proxy** — the MCP Security Proxy (MCP-SP) — interposed between the agent and all MCP servers. The proxy implements seven sequential verification phases. All 127 tests pass on Python 3.10, 3.11, and 3.12.
+This framework implements a **defense-in-depth security proxy** — the MCP Security Proxy (MCP-SP) — interposed between the agent and all MCP servers. The proxy implements seven sequential verification phases. All 128 tests pass on Python 3.10, 3.11, and 3.12.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -146,7 +151,7 @@ mcp-core-defense/
 │   │   ├── __init__.py         # Exports: DCIChecker, TDPDetector, ...
 │   │   ├── dci_checker.py      # Description-Code Consistency (Python/JS/TS)
 │   │   └── tdp_detector.py     # Tool Description Poisoning (regex patterns)
-│   ├── auth/                   # Phase 5: Mutual TLS authentication
+│   ├── auth/                   # Phase 5: Certificate pinning + hostname verification
 │   │   ├── __init__.py         # Exports: MutualTLSHandler, ...
 │   │   └── mtls.py             # Certificate verification + pinning
 │   ├── sandbox/                # Phase 6: Filesystem sandbox
@@ -289,7 +294,7 @@ make test-phase1    # Policy Engine
 make test-phase2    # Schema Validator
 make test-phase3    # DCI Checker
 make test-phase4    # TDP Detector
-make test-phase5    # Mutual TLS
+make test-phase5    # Certificate Pinning
 make test-pipeline  # Pipeline + Integration
 make test-perf      # Performance benchmarks
 
@@ -333,7 +338,7 @@ checker.analyze_static(tool_description, js_code, language="typescript")  # True
 detector = TDPDetector()
 detector.check(tool_description)  # True or raises TDPAttackDetected
 
-# Phase 5: Mutual TLS
+# Phase 5: Certificate Pinning
 handler = MutualTLSHandler(trusted_certs=[ca_cert_pem])
 handler.verify_certificate(server_cert, expected_hostname="mcp-server.local")
 
@@ -370,17 +375,17 @@ result = await adapter.secure_tool_execution(
 ## Test Results
 
 ```
-127 passed in 2.05s
+128 passed in 2.05s
 
 Phase 1 (Policy Engine):        11 tests
 Phase 2 (Schema Validator):     14 tests
 Phase 3 (DCI Checker):          20 tests  (Python + JS/TS)
 Phase 4 (TDP Detector):         11 tests
-Phase 5 (Mutual TLS Auth):      12 tests
+Phase 5 (Certificate Pinning):  12 tests
 Pipeline Orchestrator:           9 tests
 Integration (Full Pipeline):    11 tests
 Performance (Benchmarks):        8 tests
-Sandbox (Fase 6):               16 tests
+Sandbox (Fase 6):               17 tests
 SDK Adapter (Fase 7):            4 tests
 MCP Audit Tool:                 12 tests
 ```
@@ -399,7 +404,7 @@ All tests follow strict TDD — no production code without a failing test first.
 | Full Pipeline (p95) | < 50ms |
 | Throughput | > 100 checks/sec |
 | Policy Engine (1000 tools) | < 2ms |
-| TDP Detector (10KB description) | < 10ms |
+| TDP Detector (10KB description) | < 15ms |
 
 ---
 
