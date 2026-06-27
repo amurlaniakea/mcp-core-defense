@@ -128,33 +128,23 @@ class MCPSecurityProxy:
         """
         self._current_tool = tool_name
 
-        # Fase 1: Policy Engine
-        result = self._run_phase("policy", self._policy.check, tool_name)
-        if result:
-            return result
-
-        # Fase 2: Schema Validator
+        # Definir fases condicionales
+        phases = [
+            ("policy", self._policy.check, [tool_name]),
+        ]
         if self._schema and input_data is not None:
-            result = self._run_phase("schema", self._schema.validate_input, input_data)
-            if result:
-                return result
-
-        # Fase 3: DCI Checker
+            phases.append(("schema", self._schema.validate_input, [input_data]))
         if tool_description and code_params is not None:
-            result = self._run_phase("dci", self._dci.check, tool_description, code_params)
-            if result:
-                return result
-
-        # Fase 4: TDP Detector
+            phases.append(("dci", self._dci.check, [tool_description, code_params]))
         if tool_description:
-            result = self._run_phase("tdp", self._tdp.check, tool_description)
-            if result:
-                return result
-
-        # Fase 5: Auth Mutual TLS
+            phases.append(("tdp", self._tdp.check, [tool_description]))
         if self._auth and server_cert:
             kwargs = {"expected_hostname": expected_hostname} if expected_hostname else {}
-            result = self._run_phase("auth", self._auth.verify_certificate, server_cert, **kwargs)
+            phases.append(("auth", lambda: self._auth.verify_certificate(server_cert, **kwargs), []))
+
+        # Ejecutar fases en secuencia
+        for phase_name, check_func, args in phases:
+            result = self._run_phase(phase_name, check_func, *args)
             if result:
                 return result
 
