@@ -65,7 +65,6 @@ class DCIChecker:
 
         params_desc = description.get("parameters", {})
         properties = params_desc.get("properties", {})
-        required_desc = set(params_desc.get("required", []))
         declared_params = set(properties.keys())
         code_params_set = set(code_params)
 

@@ -106,6 +106,14 @@ class MCPSecurityProxy:
         from sdk_integration import MCPSecuritySDKAdapter
         return MCPSecuritySDKAdapter(self)
 
+    def _run_phase(self, phase_name: str, check_func, *args) -> PipelineResult | None:
+        """Ejecuta una fase del pipeline. Retorna PipelineResult si falla, None si pasa."""
+        try:
+            check_func(*args)
+        except Exception as e:
+            return PipelineResult(phase_name, self._current_tool, blocked=True, error=e)
+        return None
+
     def check(
         self,
         tool_name: str,
@@ -117,52 +125,38 @@ class MCPSecurityProxy:
     ) -> PipelineResult:
         """
         Ejecuta el pipeline completo de 5 fases.
-
-        Args:
-            tool_name: Nombre de la herramienta (ej: "filesystem::read_file").
-            tool_description: Descripcion MCP completa de la herramienta.
-            code_params: Lista de parametros en el codigo real.
-            input_data: Datos de entrada a validar contra el schema.
-            server_cert: Certificado PEM del servidor (Fase 5).
-            expected_hostname: Hostname esperado del servidor.
-
-        Returns:
-            PipelineResult indicando si paso o fue bloqueada en alguna fase.
         """
+        self._current_tool = tool_name
+
         # Fase 1: Policy Engine
-        try:
-            self._policy.check(tool_name)
-        except AccessDeniedError as e:
-            return PipelineResult("policy", tool_name, blocked=True, error=e)
+        result = self._run_phase("policy", self._policy.check, tool_name)
+        if result:
+            return result
 
         # Fase 2: Schema Validator
         if self._schema and input_data is not None:
-            try:
-                self._schema.validate_input(input_data)
-            except SchemaValidationError as e:
-                return PipelineResult("schema", tool_name, blocked=True, error=e)
+            result = self._run_phase("schema", self._schema.validate_input, input_data)
+            if result:
+                return result
 
         # Fase 3: DCI Checker
         if tool_description and code_params is not None:
-            try:
-                self._dci.check(tool_description, code_params)
-            except DCIInconsistencyError as e:
-                return PipelineResult("dci", tool_name, blocked=True, error=e)
+            result = self._run_phase("dci", self._dci.check, tool_description, code_params)
+            if result:
+                return result
 
         # Fase 4: TDP Detector
         if tool_description:
-            try:
-                self._tdp.check(tool_description)
-            except TDPAttackDetected as e:
-                return PipelineResult("tdp", tool_name, blocked=True, error=e)
+            result = self._run_phase("tdp", self._tdp.check, tool_description)
+            if result:
+                return result
 
         # Fase 5: Auth Mutual TLS
         if self._auth and server_cert:
-            try:
-                kwargs = {"expected_hostname": expected_hostname} if expected_hostname else {}
-                self._auth.verify_certificate(server_cert, **kwargs)
-            except (CertificateVerificationError, MITMDetectedError) as e:
-                return PipelineResult("auth", tool_name, blocked=True, error=e)
+            kwargs = {"expected_hostname": expected_hostname} if expected_hostname else {}
+            result = self._run_phase("auth", self._auth.verify_certificate, server_cert, **kwargs)
+            if result:
+                return result
 
         return PipelineResult("all", tool_name)
 

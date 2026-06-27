@@ -53,7 +53,7 @@ class MCPSecurityPolicyEngine:
             AccessDeniedError: Si la herramienta no está permitida.
         """
         if not tool_name:
-            raise AccessDeniedError(f"Empty tool name denied")
+            raise AccessDeniedError("Empty tool name denied")
 
         # Verificar si la herramienta está en la allowlist (exacta o wildcard)
         if not self._is_in_allowlist(tool_name):

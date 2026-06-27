@@ -105,7 +105,7 @@ class MutualTLSHandler:
         self._check_pinning(cert_pem, cert)
 
         # 3. Verificar que esta en los trusted
-        self._check_trusted(cert_pem, cert)
+        self._check_trusted(cert)
 
         # 4. Verificar hostname
         if expected_hostname:
@@ -207,7 +207,29 @@ class MutualTLSHandler:
                     "Possible MITM attack."
                 )
 
-    def _check_trusted(self, cert_pem: str, cert):
+    def _get_key_hash(self, public_key) -> str:
+        """Calcula hash SHA256 truncado de la clave pública."""
+        key_bytes = (
+            public_key.public_bytes(
+                serialization.Encoding.DER,
+                serialization.PublicFormat.SubjectPublicKeyInfo
+            )
+            if hasattr(public_key, 'public_bytes')
+            else str(public_key.public_numbers()).encode()
+        )
+        return hashlib.sha256(key_bytes).hexdigest()[:16]
+
+    def _get_cn(self, cert) -> str:
+        """Extrae el CN de un certificado."""
+        attrs = cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)
+        return attrs[0].value if attrs else ""
+
+    def _get_issuer_cn(self, cert) -> str:
+        """Extrae el CN del issuer de un certificado."""
+        attrs = cert.issuer.get_attributes_for_oid(NameOID.COMMON_NAME)
+        return attrs[0].value if attrs else ""
+
+    def _check_trusted(self, cert):
         """Verifica que el certificado esté en la lista de trusted.
         
         Usa serial + issuer como identificador único para evitar falsos
@@ -218,50 +240,24 @@ class MutualTLSHandler:
                 "No trusted certificates configured"
             )
 
-        # Identificador único: serial + issuer CN
         cert_serial = cert.serial_number
-        cert_issuer = cert.issuer.get_attributes_for_oid(NameOID.COMMON_NAME)
-        cert_issuer_cn = cert_issuer[0].value if cert_issuer else ""
-        cert_key_hash = hashlib.sha256(
-            cert.public_key().public_bytes(
-                serialization.Encoding.DER,
-                serialization.PublicFormat.SubjectPublicKeyInfo
-            )
-            if hasattr(cert.public_key(), 'public_bytes')
-            else str(cert.public_key().public_numbers()).encode()
-        ).hexdigest()[:16]
+        cert_issuer_cn = self._get_issuer_cn(cert)
+        cert_key_hash = self._get_key_hash(cert.public_key())
+        cert_cn = self._get_cn(cert)
 
         for trusted in self._trusted_parsed:
-            trusted_serial = trusted.serial_number
-            trusted_issuer = trusted.issuer.get_attributes_for_oid(NameOID.COMMON_NAME)
-            trusted_issuer_cn = trusted_issuer[0].value if trusted_issuer else ""
-            trusted_key_hash = hashlib.sha256(
-                trusted.public_key().public_bytes(
-                    serialization.Encoding.DER,
-                    serialization.PublicFormat.SubjectPublicKeyInfo
-                )
-                if hasattr(trusted.public_key(), 'public_bytes')
-                else str(trusted.public_key().public_numbers()).encode()
-            ).hexdigest()[:16]
-
             # Comparación por serial + issuer (identificador único)
-            # Fallback a CN + key para compatibilidad hacia atrás
-            if (cert_serial == trusted_serial and 
-                cert_issuer_cn == trusted_issuer_cn and
-                cert_key_hash == trusted_key_hash):
+            if (cert_serial == trusted.serial_number and 
+                cert_issuer_cn == self._get_issuer_cn(trusted) and
+                cert_key_hash == self._get_key_hash(trusted.public_key())):
                 return
             # Fallback: mismo CN + misma clave pública
-            cn = cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)
-            cert_cn = cn[0].value if cn else ""
-            trusted_cn = trusted.subject.get_attributes_for_oid(NameOID.COMMON_NAME)
-            trusted_cn = trusted_cn[0].value if trusted_cn else ""
-            if (cert_cn == trusted_cn and 
+            if (cert_cn == self._get_cn(trusted) and 
                 cert.public_key().public_numbers() == trusted.public_key().public_numbers()):
                 return
 
         raise CertificateVerificationError(
-            "Certificate for '" + (cert_cn if 'cert_cn' in dir() else "unknown") + 
-            "' is not in the trusted list"
+            f"Certificate for '{cert_cn}' is not in the trusted list"
         )
 
     def _check_hostname(self, cert, expected_hostname: str):
@@ -300,12 +296,8 @@ class MutualTLSHandler:
         """Match de hostname con soporte para wildcard."""
         if pattern == hostname:
             return True
+        # Wildcard: *.example.com coincide con foo.example.com
         if pattern.startswith("*."):
-            # Wildcard: *.example.com coincide con foo.example.com
             suffix = pattern[1:]  # .example.com
-            if hostname.endswith(suffix):
-                return True
-        # Match IP exacto
-        if pattern == hostname:
-            return True
+            return hostname.endswith(suffix)
         return False
