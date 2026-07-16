@@ -177,7 +177,6 @@ mcp-core-defense/
 ├── requirements.txt            # Runtime + test dependencies
 ├── CONTRIBUTING.md             # Dev setup + TDD rules + code standards
 ├── LICENSE                     # AGPL-3.0-or-later
-├── LICENSE.AGPL                # Full AGPLv3 text
 └── README.md                   # This file
 ```
 
